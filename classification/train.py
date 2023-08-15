@@ -8,12 +8,16 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+
 from torchvision.datasets import VisionDataset
+from torchvision import transforms
 
 import wandb
 
-from dataset.common import n_classes
+from dataset.common import n_classes, dataset
 from model import Classifier
+
+from tqdm import tqdm
 
 class Trainer: 
     def __init__(self, exp_name: str, dataset: VisionDataset, model: nn.Module, ckpt_path: str, ckpt_interval: int, device: str='cpu') -> None:
@@ -33,7 +37,8 @@ class Trainer:
         self.model.to(self.device)
         self.model.train()
 
-        for epoch in range(1, n_epoch + 1):
+        for epoch in tqdm(range(1, n_epoch + 1)):
+            losses = []
             for _, (x, y) in enumerate(train_loader):
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
@@ -42,10 +47,14 @@ class Trainer:
                 loss.backward()
                 optimizer.step()
 
+                losses.append(loss.item())
                 wandb.log({'loss': loss.item()})
 
+            tqdm.write(f'Epoch {epoch} | Loss: {sum(losses) / len(losses)}')
             if epoch % self.ckpt_interval == 0:
-                torch.save(self.model.state_dict(), os.path.join(self.ckpt_path, f'{self.exp_name}_{epoch}.pth'))
+                ckpt_saved = os.path.join(self.ckpt_path, f'{self.exp_name}_{epoch}.pth')
+                torch.save(self.model.state_dict(), ckpt_saved)
+                tqdm.write(f'Checkpoint saved: {ckpt_saved}')
 
 class ActiveLearningTrainer(Trainer):
     def __init__(self, exp_name: str, dataset: VisionDataset, model: torch.nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
@@ -66,11 +75,16 @@ def main(args: argparse.Namespace):
         print(f'Load pretrained model: {args.pretrained_model}')
         model.load_state_dict(torch.load(args.pretrained_model))
     
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    dataset_ = dataset(args.dataset, train=True, transform=transform)
+
     if args.al:
-        al = ActiveLearningTrainer(args.exp_name, args.dataset, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function)
+        al = ActiveLearningTrainer(args.exp_name, dataset_, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function, device=args.device)
         al.train(args.batch_size, args.epochs, args.lr, args.weight_decay)
     else:
-        trainer = Trainer(args.exp_name, args.dataset, model, args.ckpt_path, args.ckpt_interval)
+        trainer = Trainer(args.exp_name, dataset_, model, args.ckpt_path, args.ckpt_interval, device=args.device)
         trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay)
 
 if __name__ == '__main__':
@@ -80,6 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt_interval', type=int, default=10)
     parser.add_argument('--model', type=str, default='resnet34')
     parser.add_argument('--pretrained_model', type=str)
+    parser.add_argument('--device', type=str, default='cpu')
     
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=100)
@@ -91,7 +106,7 @@ if __name__ == '__main__':
     parser.add_argument('--budget_per_stage', type=int)
     parser.add_argument('--cost_function', type=str)
 
-    parser.add_argument('--exp_name', type=str)
+    parser.add_argument('--exp_name', type=str, required=True)
     
     args = parser.parse_args()
     main(args)

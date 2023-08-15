@@ -16,12 +16,12 @@ def n_classes(name: str):
         return 1000
     raise ValueError(f'Unknown dataset: {name}')
 
-def dataset(name: str, train: bool): 
+def dataset(name: str, train: bool, transform=None): 
     root = f'dataset/{name}'
     if name == 'cifar10': 
-        return Cifar10(root=root, train=train, download=False)
+        return Cifar10(root=root, train=train, transform=transform, download=False)
     elif name == 'cifar100': 
-        return Cifar100(root=root, train=train, download=False)
+        return Cifar100(root=root, train=train, transform=transform, download=False)
     elif name == 'imagenet':
         raise NotImplementedError('ImageNet is not implemented yet')
     raise ValueError(f'Unknown dataset: {name}')
