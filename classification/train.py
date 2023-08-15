@@ -38,9 +38,9 @@ class Trainer:
         self.model.to(self.device)
         self.model.train()
 
-        for epoch in tqdm(range(1, n_epoch + 1)):
+        for epoch in range(1, n_epoch + 1):
             losses = []
-            for _, (x, y) in enumerate(train_loader):
+            for _, (x, y) in tqdm(enumerate(train_loader), desc=f'Epoch {epoch}/{n_epoch}', total=len(train_loader)):
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 y_pred = self.model(x)
@@ -51,11 +51,14 @@ class Trainer:
                 losses.append(loss.item())
                 wandb.log({'loss': loss.item()})
 
-            tqdm.write(f'Epoch {epoch} | Loss: {sum(losses) / len(losses)}')
+            loss_avg = sum(losses) / len(losses)
+            print(f'Epoch {epoch} | Loss: {loss_avg}')
+            wandb.log({'epoch': epoch, 'loss_avg': loss_avg})
+            
             if epoch % self.ckpt_interval == 0:
                 ckpt_saved = os.path.join(self.ckpt_path, f'{self.exp_name}_{epoch}.pth')
                 torch.save(self.model.state_dict(), ckpt_saved)
-                tqdm.write(f'Checkpoint saved: {ckpt_saved}')
+                print(f'Checkpoint saved: {ckpt_saved}')
 
 class ActiveLearningTrainer(Trainer):
     def __init__(self, exp_name: str, dataset: VisionDataset, model: torch.nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
