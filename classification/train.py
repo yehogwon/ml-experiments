@@ -25,6 +25,7 @@ class Trainer:
         self.dataset = dataset
         self.model = model
         self.ckpt_path = ckpt_path
+        self.ckpt_interval = ckpt_interval
         self.device = device
 
         wandb.init(project='Classification Experiment', name=self.exp_name)
