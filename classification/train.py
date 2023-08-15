@@ -12,7 +12,8 @@ from torchvision.datasets import VisionDataset
 
 import wandb
 
-from model import create_model
+from dataset.common import n_classes
+from model import Classifier
 
 class Trainer: 
     def __init__(self, exp_name: str, dataset: VisionDataset, model: nn.Module, ckpt_path: str, ckpt_interval: int, device: str='cpu') -> None:
@@ -59,7 +60,7 @@ class ActiveLearningTrainer(Trainer):
         pass
 
 def main(args: argparse.Namespace): 
-    model = create_model(args.model)
+    model = Classifier(args.model, n_classes(args.dataset))
 
     if args.pretrained_model:
         print(f'Load pretrained model: {args.pretrained_model}')
