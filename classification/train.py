@@ -30,7 +30,7 @@ class Trainer:
 
         wandb.init(project='Classification Experiment', name=self.exp_name)
 
-    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float) -> None: 
+    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int) -> None: 
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         train_loader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -38,7 +38,7 @@ class Trainer:
         self.model.to(self.device)
         self.model.train()
 
-        for epoch in range(1, n_epoch + 1):
+        for epoch in range(start_epoch, n_epoch + 1):
             losses = []
             for _, (x, y) in tqdm(enumerate(train_loader), desc=f'Epoch {epoch}/{n_epoch}', total=len(train_loader)):
                 x, y = x.to(self.device), y.to(self.device)
@@ -62,14 +62,19 @@ class Trainer:
 
 class ActiveLearningTrainer(Trainer):
     def __init__(self, exp_name: str, dataset: VisionDataset, model: torch.nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
-        super().__init__(self, exp_name, dataset, model, ckpt_path, device)
+        super().__init__(exp_name, dataset, model, ckpt_path, ckpt_interval, device)
         self.n_stages = n_stages
         self.budget_per_stage = budget_per_stage
+
+        self.acquisition_function = None # TODO: acquisition function
 
         # TODO: cost function
 
     def train(self) -> None: 
         # TODO: implement training pipeline for active learning for image classification
+        pass
+
+    def pick_k(self, k: int) -> list[int]: 
         pass
 
 def main(args: argparse.Namespace): 
@@ -89,7 +94,7 @@ def main(args: argparse.Namespace):
         al.train(args.batch_size, args.epochs, args.lr, args.weight_decay)
     else:
         trainer = Trainer(args.exp_name, dataset_, model, args.ckpt_path, args.ckpt_interval, device=args.device)
-        trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay)
+        trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -97,8 +102,10 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt_path', type=str, required=True)
     parser.add_argument('--ckpt_interval', type=int, default=10)
     parser.add_argument('--model', type=str, default='resnet34')
-    parser.add_argument('--pretrained_model', type=str)
     parser.add_argument('--device', type=str, default='cpu')
+
+    parser.add_argument('--pretrained_model', type=str)
+    parser.add_argument('--start_epoch', type=int, default=1)
     
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=100)
