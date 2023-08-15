@@ -196,3 +196,6 @@ pyrightconfig.json
 
 .DS_Store
 wandb
+
+# pretrained model (checkpoint)
+checkpoint
