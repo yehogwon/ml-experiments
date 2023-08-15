@@ -12,10 +12,10 @@ from torchvision.datasets import VisionDataset
 
 import wandb
 
-from common import create_model
+from model import create_model
 
 class Trainer: 
-    def __init__(self, exp_name: str, dataset: VisionDataset, model: nn.Module, ckpt_path: str, device: str='cpu') -> None:
+    def __init__(self, exp_name: str, dataset: VisionDataset, model: nn.Module, ckpt_path: str, ckpt_interval: int, device: str='cpu') -> None:
         self.exp_name = exp_name
         self.dataset = dataset
         self.model = model
@@ -25,11 +25,29 @@ class Trainer:
         wandb.init(project='Classification Experiment', name=self.exp_name)
 
     def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float) -> None: 
-        # TODO: implement training pipeline for image classification
-        pass
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        train_loader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+
+        self.model.to(self.device)
+        self.model.train()
+
+        for epoch in range(1, n_epoch + 1):
+            for _, (x, y) in enumerate(train_loader):
+                x, y = x.to(self.device), y.to(self.device)
+                optimizer.zero_grad()
+                y_pred = self.model(x)
+                loss = loss_fn(y_pred, y)
+                loss.backward()
+                optimizer.step()
+
+                wandb.log({'loss': loss.item()})
+
+            if epoch % self.ckpt_interval == 0:
+                torch.save(self.model.state_dict(), os.path.join(self.ckpt_path, f'{self.exp_name}_{epoch}.pth'))
 
 class ActiveLearningTrainer(Trainer):
-    def __init__(self, exp_name: str, dataset: VisionDataset, model: torch.nn.Module, ckpt_path: str, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
+    def __init__(self, exp_name: str, dataset: VisionDataset, model: torch.nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
         super().__init__(self, exp_name, dataset, model, ckpt_path, device)
         self.n_stages = n_stages
         self.budget_per_stage = budget_per_stage
@@ -48,16 +66,17 @@ def main(args: argparse.Namespace):
         model.load_state_dict(torch.load(args.pretrained_model))
     
     if args.al:
-        al = ActiveLearningTrainer(args.exp_name, args.dataset, model, args.ckpt_path, args.al_stage, args.budget_per_stage, args.cost_function)
+        al = ActiveLearningTrainer(args.exp_name, args.dataset, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function)
         al.train(args.batch_size, args.epochs, args.lr, args.weight_decay)
     else:
-        trainer = Trainer(args.exp_name, args.dataset, model, args.ckpt_path)
+        trainer = Trainer(args.exp_name, args.dataset, model, args.ckpt_path, args.ckpt_interval)
         trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--ckpt_path', type=str, required=True)
+    parser.add_argument('--ckpt_interval', type=int, default=10)
     parser.add_argument('--model', type=str, default='resnet34')
     parser.add_argument('--pretrained_model', type=str)
     
