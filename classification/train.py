@@ -108,7 +108,7 @@ class ActiveLearningTrainer(Trainer):
         pass
 
 def main(args: argparse.Namespace): 
-    model = Classifier(args.model, n_classes(args.dataset), pretrained=args.pretrained_backbone)
+    model = Classifier(args.model, n_classes(args.dataset), pretrained=not args.scratch_backbone)
 
     if args.pretrained_model:
         print(f'Load pretrained model: {args.pretrained_model}')
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, default='resnet34', help='model architecture (backbone)')
     parser.add_argument('--device', type=str, default='cpu', help='device on which the model will be trained/validated')
 
-    parser.add_argument('--pretrained_backbone', type=str, help='path to pretrained model', default=True)
+    parser.add_argument('--scratch_backbone', action='store_true', help='whether to train the backbone from scratch')
     parser.add_argument('--pretrained_model', type=str, help='path to pretrained model')
     parser.add_argument('--start_epoch', type=int, default=1, help='start epoch for training')
     
