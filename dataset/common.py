@@ -23,5 +23,6 @@ def create_dataset(name: str, train: bool, transform=None):
     elif name == 'cifar100': 
         return Cifar100(root=root, train=train, transform=transform, download=False)
     elif name == 'imagenet':
-        raise NotImplementedError('ImageNet is not implemented yet')
+        # return ImageNet(root=root, split='train' if train else 'val', transform=transform)
+        return ImageNet(root=root, split='val', transform=transform) # train set is too large
     raise ValueError(f'Unknown dataset: {name}')
