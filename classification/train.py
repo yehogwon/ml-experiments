@@ -58,11 +58,16 @@ class Trainer:
                 losses.append(loss.item())
                 wandb.log({'loss': loss.item()})
 
-            loss_avg = sum(losses) / len(losses)
-            acc = self.validate(batch_size)
+            train_loss = sum(losses) / len(losses)
+            acc, test_loss = self.validate(batch_size)
 
-            print(f'Epoch {epoch} | Loss: {loss_avg} | Accuracy: {acc}')
-            wandb.log({'epoch': epoch, 'loss_avg': loss_avg, 'accuracy': acc})
+            print(f'Epoch {epoch} | Train Loss: {train_loss} | Test Loss: {test_loss} | Accuracy: {acc}')
+            wandb.log({
+                'epoch': epoch, 
+                'train_loss': train_loss, 
+                'test_loss': test_loss,
+                'accuracy': acc
+            })
 
             if epoch % self.ckpt_interval == 0:
                 ckpt_saved = os.path.join(self.ckpt_path, f'{self.exp_name}_{epoch}.pth')
@@ -71,13 +76,20 @@ class Trainer:
     
     def validate(self, batch_size: int) -> float: 
         test_loader = DataLoader(self.test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+        loss_fn = nn.CrossEntropyLoss()
         n_correct = 0
+        losses = []
         for x, y in tqdm(test_loader, desc=f'Validation'):
             x, y = x.to(self.device), y.to(self.device)
             y_pred = self.model(x)
             n_correct = (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
+
+            loss = loss_fn(y_pred, y)
+            losses.append(loss.item())
+
         acc = n_correct / len(self.test_dataset)
-        return acc
+        loss_avg = sum(losses) / len(losses)
+        return acc, loss_avg
 
 class ActiveLearningTrainer(Trainer):
     def __init__(self, exp_name: str, dataset: VisionDataset, model: torch.nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
