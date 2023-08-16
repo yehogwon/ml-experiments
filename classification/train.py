@@ -37,7 +37,7 @@ class Trainer:
         wandb.init(project='Classification Experiment', name=self.exp_name)
 
         loss_fn = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
         train_loader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
@@ -131,28 +131,28 @@ def main(args: argparse.Namespace):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str)
-    parser.add_argument('--ckpt_path', type=str, required=True)
-    parser.add_argument('--ckpt_interval', type=int, default=10)
-    parser.add_argument('--model', type=str, default='resnet34')
-    parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--dataset', type=str, required=True, help='dataset name to train/validate')
+    parser.add_argument('--ckpt_path', type=str, required=True, help='path to save checkpoints (directory)')
+    parser.add_argument('--ckpt_interval', type=int, default=10, help='interval for saving checkpoints')
+    parser.add_argument('--model', type=str, default='resnet34', help='model architecture (backbone)')
+    parser.add_argument('--device', type=str, default='cpu', help='device on which the model will be trained/validated')
 
-    parser.add_argument('--pretrained_model', type=str)
-    parser.add_argument('--start_epoch', type=int, default=1)
+    parser.add_argument('--pretrained_model', type=str, help='path to pretrained model')
+    parser.add_argument('--start_epoch', type=int, default=1, help='start epoch for training')
     
-    parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--weight_decay', type=float, default=1e-4)
+    parser.add_argument('--batch_size', type=int, default=32, help='batch size for training')
+    parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
+    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--weight_decay', type=float, default=1e-4, help='L2 regularization coefficient')
 
-    parser.add_argument('--validate', action='store_true')
+    parser.add_argument('--validate', action='store_true', help='whether to validate the model (pretrained model required)')
     
-    parser.add_argument('--al', action='store_true')
-    parser.add_argument('--al_stage', type=int)
-    parser.add_argument('--budget_per_stage', type=int)
-    parser.add_argument('--cost_function', type=str)
+    parser.add_argument('--al', action='store_true', help='whether to adopt active learning framework')
+    parser.add_argument('--al_stage', type=int, help='number of stages for active learning')
+    parser.add_argument('--budget_per_stage', type=int, help='total cost of labeling samples per stage')
+    parser.add_argument('--cost_function', type=str, help='cost function for calculating the labeling cost of each sample')
 
-    parser.add_argument('--exp_name', type=str, required=True)
+    parser.add_argument('--exp_name', type=str, required=True, help='Experiment name for wandb and ckpt')
     
     args = parser.parse_args()
     main(args)
