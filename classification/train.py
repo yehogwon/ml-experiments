@@ -21,7 +21,7 @@ from model import Classifier
 from tqdm import tqdm
 
 class Trainer: 
-    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, device: str='cpu', wandb: bool=True) -> None:
+    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, device: str='cpu', use_wandb: bool=True) -> None:
         self.exp_name = exp_name
         self.dataset_name = dataset
         self.transform = transform
@@ -33,7 +33,7 @@ class Trainer:
         self.ckpt_interval = ckpt_interval
         self.device = device
 
-        if wandb: 
+        if use_wandb: 
             wandb.init(project='Classification Experiment', name=self.exp_name, resume=True)
 
     def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int) -> None: 
@@ -122,7 +122,7 @@ def main(args: argparse.Namespace):
     if args.al:
         trainer = ActiveLearningTrainer(args.exp_name, args.dataset, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function, device=args.device) # TODO: edit this line
     else:
-        trainer = Trainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, device=args.device, wandb=not args.validate)
+        trainer = Trainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, device=args.device, use_wandb=not args.validate)
 
     if args.validate: 
         acc = trainer.validate(args.batch_size)
