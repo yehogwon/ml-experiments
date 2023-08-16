@@ -121,7 +121,7 @@ def main(args: argparse.Namespace):
     if args.al:
         trainer = ActiveLearningTrainer(args.exp_name, args.dataset, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function, device=args.device) # TODO: edit this line
     else:
-        trainer = Trainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, device=args.device, use_wandb=not args.validate)
+        trainer = Trainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, device=args.device)
 
     if args.validate: 
         acc = trainer.validate(args.batch_size)
