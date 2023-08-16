@@ -8,7 +8,7 @@ import torch.nn as nn
 class Classifier(nn.Module): 
     def __init__(self, backbone: str, n_classes: int, pretrained: bool=True):
         super().__init__()
-        self.backbone = create_model(backbone)
+        self.backbone = create_model(backbone, pretrained=pretrained)
         self.backbone.fc = nn.Linear(self.backbone.fc.in_features, n_classes)
         self.n_classes = n_classes
     

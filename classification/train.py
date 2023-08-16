@@ -108,7 +108,7 @@ class ActiveLearningTrainer(Trainer):
         pass
 
 def main(args: argparse.Namespace): 
-    model = Classifier(args.model, n_classes(args.dataset))
+    model = Classifier(args.model, n_classes(args.dataset), pretrained=True)
 
     if args.pretrained_model:
         print(f'Load pretrained model: {args.pretrained_model}')
