@@ -16,7 +16,7 @@ def n_classes(name: str):
         return 1000
     raise ValueError(f'Unknown dataset: {name}')
 
-def dataset(name: str, train: bool, transform=None): 
+def create_dataset(name: str, train: bool, transform=None): 
     root = f'dataset/{name}'
     if name == 'cifar10': 
         return Cifar10(root=root, train=train, transform=transform, download=False)
