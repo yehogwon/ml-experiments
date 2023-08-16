@@ -46,10 +46,12 @@ class Trainer:
 
         for epoch in range(start_epoch, n_epoch + 1):
             losses = []
+            n_correct = 0
             for x, y in tqdm(train_loader, desc=f'Epoch {epoch}/{n_epoch}'):
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 y_pred = self.model(x)
+                n_correct += (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
                 loss = loss_fn(y_pred, y)
                 loss.backward()
                 optimizer.step()
@@ -58,15 +60,24 @@ class Trainer:
                 wandb.log({'loss': loss.item()})
 
             train_loss = sum(losses) / len(losses)
-            acc, test_loss = self.validate(batch_size)
 
-            print(f'Epoch {epoch} | Train Loss: {train_loss} | Test Loss: {test_loss} | Accuracy: {acc}')
-            wandb.log({
-                'epoch': epoch, 
-                'train_loss': train_loss, 
-                'test_loss': test_loss,
-                'accuracy': acc
-            })
+            if self.dataset_name == 'imagenet': 
+                acc = n_correct / len(self.train_dataset)
+                print(f'Epoch {epoch} | Train Loss: {train_loss} | Accuracy: {acc}')
+                wandb.log({
+                    'epoch': epoch, 
+                    'train_loss': train_loss, 
+                    'accuracy': acc
+                })
+            else: 
+                acc, test_loss = self.validate(batch_size)
+                print(f'Epoch {epoch} | Train Loss: {train_loss} | Test Loss: {test_loss} | Accuracy: {acc}')
+                wandb.log({
+                    'epoch': epoch, 
+                    'train_loss': train_loss, 
+                    'test_loss': test_loss,
+                    'accuracy': acc
+                })
 
             if epoch % self.ckpt_interval == 0:
                 ckpt_saved = os.path.join(self.ckpt_path, f'{self.exp_name}_{epoch}.pth')
