@@ -91,8 +91,8 @@ class Trainer:
         return acc, loss_avg
 
 class ActiveLearningTrainer(Trainer):
-    def __init__(self, exp_name: str, dataset: VisionDataset, model: torch.nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
-        super().__init__(exp_name, dataset, model, ckpt_path, ckpt_interval, device)
+    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
+        super().__init__(exp_name, dataset, transform, model, ckpt_path, ckpt_interval, device)
         self.n_stages = n_stages
         self.budget_per_stage = budget_per_stage
 
@@ -119,7 +119,7 @@ def main(args: argparse.Namespace):
     ])
 
     if args.al:
-        trainer = ActiveLearningTrainer(args.exp_name, args.dataset, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function, device=args.device) # TODO: edit this line
+        trainer = ActiveLearningTrainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function, device=args.device)
     else:
         trainer = Trainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, device=args.device)
 
