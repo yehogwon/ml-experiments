@@ -21,7 +21,7 @@ from model import Classifier
 from tqdm import tqdm
 
 class Trainer: 
-    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, device: str='cpu', use_wandb: bool=True) -> None:
+    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, device: str='cpu') -> None:
         self.exp_name = exp_name
         self.dataset_name = dataset
         self.transform = transform
@@ -33,10 +33,9 @@ class Trainer:
         self.ckpt_interval = ckpt_interval
         self.device = device
 
-        if use_wandb: 
-            wandb.init(project='Classification Experiment', name=self.exp_name, resume=True)
-
     def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int) -> None: 
+        wandb.init(project='Classification Experiment', name=self.exp_name)
+
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -82,7 +81,7 @@ class Trainer:
         for x, y in tqdm(test_loader, desc=f'Validation'):
             x, y = x.to(self.device), y.to(self.device)
             y_pred = self.model(x)
-            n_correct = (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
+            n_correct += (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
 
             loss = loss_fn(y_pred, y)
             losses.append(loss.item())
