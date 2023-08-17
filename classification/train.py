@@ -34,7 +34,18 @@ class Trainer:
         self.device = device
 
     def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int) -> None: 
-        wandb.init(project='Classification Experiment', name=self.exp_name)
+        wandb.init(project='Classification Experiment', name=self.exp_name, config={
+            'dataset': self.dataset_name,
+            'model': self.model.__class__.__name__,
+            'batch_size': batch_size,
+            'n_epoch': n_epoch,
+            'lr': lr,
+            'weight_decay': weight_decay,
+            'start_epoch': start_epoch,
+            'device': self.device,
+            'ckpt_path': self.ckpt_path,
+            'ckpt_interval': self.ckpt_interval
+        })
 
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
