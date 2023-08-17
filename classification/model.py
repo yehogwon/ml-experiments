@@ -9,11 +9,13 @@ class Classifier(nn.Module):
     def __init__(self, backbone: str, n_classes: int, pretrained: bool=True):
         super().__init__()
         self.backbone = create_model(backbone, pretrained=pretrained)
-        self.backbone.fc = nn.Linear(self.backbone.fc.in_features, n_classes)
-        self.n_classes = n_classes
+        self.fc = nn.Linear(self.backbone.fc.out_features, n_classes) if self.backbone.fc.out_features != n_classes else None
     
     def forward(self, x): 
-        return self.backbone(x)
+        out = self.backbone(x)
+        if self.fc is not None:
+            out = self.fc(out)
+        return out
 
 def create_model(name: str, pretrained: bool=True): 
     match name: 
