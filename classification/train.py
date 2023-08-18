@@ -219,10 +219,14 @@ class ActiveLearningTrainer(Trainer):
             log_info = {
                 'stage': stage,
                 f'train_loss_avg': sum(train_losses) / len(train_losses),
-                f'train_acc_avg': sum(train_acces) / len(train_acces),
-                f'val_loss_avg': sum(val_losses) / len(val_losses),
-                f'val_acc_avg': sum(val_acces) / len(val_acces)
+                f'train_acc_avg': sum(train_acces) / len(train_acces)
             }
+            
+            if not no_validation:
+                log_info.update({
+                    f'val_loss_avg': sum(val_losses) / len(val_losses),
+                    f'val_acc_avg': sum(val_acces) / len(val_acces)
+                })
 
             print(' | '.join([f'{k}: {v}' for k, v in log_info.items()]))
             if wandb_log: 
