@@ -75,7 +75,7 @@ class Trainer:
                     'val_acc': val_acc
                 })
 
-            print(' | '.join([f'{k.title()}: {v}' for k, v in log_info.items()]))
+            print(' | '.join([f'{k}: {v}' for k, v in log_info.items()]))
             if wandb_log: 
                 wandb.log(log_info)
 
@@ -181,7 +181,7 @@ class ActiveLearningTrainer(Trainer):
             newly_labeled_indices_arr = np.array(newly_labeled_indices, dtype=int)
             self.labeled_ones[newly_labeled_indices_arr] = 1 # update labeled_ones
             labeled_indices = np.where(self.labeled_ones == 1)[0].tolist() # indices of labeled samples
-            train_loader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, sampler=torch.utils.data.SubsetRandomSampler(labeled_indices))
+            train_loader = DataLoader(self.train_dataset, batch_size=batch_size, num_workers=4, sampler=torch.utils.data.SubsetRandomSampler(labeled_indices))
 
             self.model.to(self.device)
             self.model.train()
@@ -190,6 +190,8 @@ class ActiveLearningTrainer(Trainer):
             val_losses, val_acces = [], []
             for epoch in range(start_epoch, n_epoch + 1):
                 train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
+                train_losses.append(train_loss)
+                train_acces.append(train_acc)
 
                 log_info = {
                     f'stage{stage}/epoch': epoch, 
@@ -203,15 +205,12 @@ class ActiveLearningTrainer(Trainer):
                         f'stage{stage}/val_loss': val_loss, 
                         f'stage{stage}/val_acc': val_acc
                     })
+                    val_losses.append(val_loss)
+                    val_acces.append(val_acc)
 
-                print(' | '.join([f'{k.title()}: {v}' for k, v in log_info.items()]))
+                print(' | '.join([f'{k}: {v}' for k, v in log_info.items()]))
                 if wandb_log:
                     wandb.log(log_info)
-
-                train_losses.append(train_loss)
-                train_acces.append(train_acc)
-                val_losses.append(val_loss)
-                val_acces.append(val_acc)
 
                 if epoch % self.ckpt_interval == 0:
                     ckpt_path = self._save_model(f'{self.exp_name}_{epoch}.pth')
