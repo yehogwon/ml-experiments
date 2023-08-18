@@ -4,6 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import argparse
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -17,6 +18,7 @@ import wandb
 
 from dataset.common import n_classes, create_dataset
 from model import Classifier
+from acquisition import *
 
 from tqdm import tqdm
 
@@ -113,21 +115,27 @@ class Trainer:
         return acc, loss_avg
 
 class ActiveLearningTrainer(Trainer):
-    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, n_stages: int, budget_per_stage: int, cost_function: str, device: str='cpu') -> None:
+    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, acquisition_function: str, device: str='cpu') -> None:
         super().__init__(exp_name, dataset, transform, model, ckpt_path, ckpt_interval, device)
-        self.n_stages = n_stages
-        self.budget_per_stage = budget_per_stage
 
-        self.acquisition_function = None # TODO: acquisition function
+        match acquisition_function:
+            case 'class_balance_sampling':
+                self.acquisition_function = class_balance_sampling
+            case _: 
+                raise ValueError(f'Invalid acquisition function: {acquisition_function}')
+        # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, **kwargs) -> list[float]
 
-        # TODO: cost function
+        self.acquisition_values = [0] * len(self.train_dataset)
+        self.labeled_ones = np.zeros(len(self.train_dataset), dtype=int) # 0: unlabeled, 1: labeled e.g., self.labeled_ones[i] = 1 iff i-th sample is labeled
+        # np.where(self.labeled_ones == 1)[0].tolist() returns the list of indices of labeled samples
+        # np.count_nonzero(self.labeled_ones) returns the number of labeled samples
 
-    def train(self) -> None: 
+    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, n_stages: int, budget_per_stage: int) -> None: 
         # TODO: implement training pipeline for active learning for image classification
         pass
-
-    def pick_k(self, k: int) -> list[int]: 
-        pass
+    
+    def _update_acquisition(self) -> None: 
+        self.acquisition_values = self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name))
 
 def main(args: argparse.Namespace): 
     model = Classifier(args.model, n_classes(args.dataset), pretrained=not args.scratch_backbone)
@@ -144,7 +152,7 @@ def main(args: argparse.Namespace):
     ])
 
     if args.al:
-        trainer = ActiveLearningTrainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, args.al_stage, args.budget_per_stage, args.cost_function, device=args.device)
+        trainer = ActiveLearningTrainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, args.acquisition_function, device=args.device)
     else:
         trainer = Trainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, device=args.device)
 
@@ -152,7 +160,10 @@ def main(args: argparse.Namespace):
         acc = trainer.validate(args.batch_size)
         print(f'Accuracy: {acc}')
     else: 
-        trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch)
+        if args.al: 
+            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch, args.al_stage, args.budget_per_stage)
+        else: 
+            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -174,9 +185,9 @@ if __name__ == '__main__':
     parser.add_argument('--validate', action='store_true', help='whether to validate the model (pretrained model required)')
     
     parser.add_argument('--al', action='store_true', help='whether to adopt active learning framework')
+    parser.add_argument('--acquisition_function', type=str, help='acquisition function for selecting samples to label', default='class_balance_sampling')
     parser.add_argument('--al_stage', type=int, help='number of stages for active learning')
     parser.add_argument('--budget_per_stage', type=int, help='total cost of labeling samples per stage')
-    parser.add_argument('--cost_function', type=str, help='cost function for calculating the labeling cost of each sample')
 
     parser.add_argument('--exp_name', type=str, required=True, help='Experiment name for wandb and ckpt')
     
