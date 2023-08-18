@@ -133,7 +133,7 @@ class ActiveLearningTrainer(Trainer):
                 self.acquisition_function = class_balance_sampling
             case _: 
                 raise ValueError(f'Invalid acquisition function: {acquisition_function}')
-        # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, **kwargs) -> list[tuple[int, float]]
+        # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, device: str, **kwargs) -> list[tuple[int, float]]
 
         self.acquisition_values = [0] * len(self.train_dataset) # list of tuples (index, acquisition value) <- acquisition values of labeled samples are set to 0
         self.labeled_ones = np.zeros(len(self.train_dataset), dtype=int) # 0: unlabeled, 1: labeled e.g., self.labeled_ones[i] = 1 iff i-th sample is labeled
@@ -216,17 +216,20 @@ class ActiveLearningTrainer(Trainer):
                     ckpt_path = self._save_model(f'{self.exp_name}-{stage}-{epoch}.pth')
                     print(f'Checkpoint saved: {ckpt_path}')
 
+            log_info = {
+                'stage': stage,
+                f'train_loss_avg': sum(train_losses) / len(train_losses),
+                f'train_acc_avg': sum(train_acces) / len(train_acces),
+                f'val_loss_avg': sum(val_losses) / len(val_losses),
+                f'val_acc_avg': sum(val_acces) / len(val_acces)
+            }
+
+            print(' | '.join([f'{k}: {v}' for k, v in log_info.items()]))
             if wandb_log: 
-                wandb.log({
-                    'stage': stage,
-                    f'train_loss_avg': sum(train_losses) / len(train_losses),
-                    f'train_acc_avg': sum(train_acces) / len(train_acces),
-                    f'val_loss_avg': sum(val_losses) / len(val_losses),
-                    f'val_acc_avg': sum(val_acces) / len(val_acces)
-                })
+                wandb.log(log_info)
     
     def _update_acquisition(self) -> list[int]: 
-        acquisition_value_arr = np.array(self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name)), dtype=float)
+        acquisition_value_arr = np.array(self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name), self.device), dtype=float)
         # masked_acquisition_values = (cal_acquisition_value * (1 - self.labeled_ones)).tolist()
         acquisition_value_arr.T[1][np.where(self.labeled_ones == 1)[0]] = 0 # masked acquisition values (labeled -> 0)
         sorted_masked_acquisition_arr = acquisition_value_arr[acquisition_value_arr[:, 1].argsort()[::-1]] # sort by acquisition values (descending order)
