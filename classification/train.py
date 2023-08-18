@@ -49,6 +49,7 @@ class Trainer:
                 'ckpt_path': self.ckpt_path,
                 'ckpt_interval': self.ckpt_interval
             })
+            wandb.watch(self.model)
 
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -155,6 +156,7 @@ class ActiveLearningTrainer(Trainer):
                 'ckpt_path': self.ckpt_path,
                 'ckpt_interval': self.ckpt_interval
             })
+            wandb.watch(self.model)
 
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -164,17 +166,22 @@ class ActiveLearningTrainer(Trainer):
 
         for stage in range(1, n_stages + 1): 
             # sampling: get indices to train on
-            # label_indices: np.ndarray <- indices to newly label
+            # newly_label_indices: np.ndarray <- indices to newly label
             if stage == 1: 
                 assert self._remaining_samples() >= budget_per_stage, f'Not enough samples to label: {self._remaining_samples()} < {budget_per_stage}'
-                label_indices = np.random.choice(np.where(self.labeled_ones == 0)[0], size=budget_per_stage, replace=False)
+                newly_labeled_indices = np.random.choice(np.where(self.labeled_ones == 0)[0], size=budget_per_stage, replace=False)
             else: 
                 if self._remaining_samples() < budget_per_stage: 
-                    label_indices = np.where(self.labeled_ones == 0)[0]
+                    newly_labeled_indices = np.where(self.labeled_ones == 0)[0]
                 else: 
-                    label_indices = self._update_acquisition()[:budget_per_stage]
+                    newly_labeled_indices = self._update_acquisition()[:budget_per_stage]
             # For the reference of SubsetRandomSampler, refer to here: https://pytorch.org/docs/stable/data.html#torch.utils.data.SubsetRandomSampler
-            train_loader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, sampler=torch.utils.data.SubsetRandomSampler(label_indices))
+
+            # TODO: Log newly labeled images in this stage and their acquisition values to wandb
+            newly_labeled_indices_arr = np.array(newly_labeled_indices, dtype=int)
+            self.labeled_ones[newly_labeled_indices_arr] = 1 # update labeled_ones
+            labeled_indices = np.where(self.labeled_ones == 1)[0].tolist() # indices of labeled samples
+            train_loader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, sampler=torch.utils.data.SubsetRandomSampler(labeled_indices))
 
             self.model.to(self.device)
             self.model.train()
