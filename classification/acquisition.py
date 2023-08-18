@@ -11,26 +11,27 @@ from torch.utils.data import DataLoader
 
 from tqdm import tqdm
 
-def _class_count(x: torch.Tensor, model: nn.Module, total: int) -> torch.Tensor: 
-    probs = model(x)
-    preds = F.softmax(probs, dim=1).argmax(dim=1)
-    return torch.Tensor([(preds == i).sum() for i in range(total)]) # FIXME: this loop is a bottleneck
-
-def _class_count_in_dataset(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=128) -> torch.Tensor: 
+def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=128) -> torch.Tensor: 
     # device: the device on which the model is located
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-    counts = torch.zeros(total)
+    pred_stack = None
     for x, _ in tqdm(loader, desc='Computing the class balance in the dataset according to the model prediction'): 
         x = x.to(device)
-        counts += _class_count(x, model, total)
-    return counts
+        probs = model(x)
+        preds = F.softmax(probs, dim=1).argmax(dim=1)
+        if pred_stack is None:
+            pred_stack = preds
+        else:
+            pred_stack = torch.cat((pred_stack, preds))
+    return torch.Tensor([(pred_stack == i).sum().item() for i in range(total)])
 
 def _class_balance_coefficient(counts: torch.Tensor) -> torch.Tensor: 
     total = counts.sum().item()
     return torch.exp(-counts / total)
 
+# FIXME: make it more efficient
 def class_balance_sampling(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=64) -> list[tuple[int, float]]: 
-    counts = _class_count_in_dataset(dataset, model, total, device, batch_size)
+    counts = _class_count(dataset, model, total, device, batch_size)
     coeffs = _class_balance_coefficient(counts)
     weights = [coeffs[y] for _, y in dataset]
     return list(enumerate(weights))
