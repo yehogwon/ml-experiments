@@ -35,19 +35,20 @@ class Trainer:
         self.ckpt_interval = ckpt_interval
         self.device = device
 
-    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int) -> None: 
-        wandb.init(project='Classification Experiment', name=self.exp_name, config={
-            'dataset': self.dataset_name,
-            'model': self.model.__class__.__name__,
-            'batch_size': batch_size,
-            'n_epoch': n_epoch,
-            'lr': lr,
-            'weight_decay': weight_decay,
-            'start_epoch': start_epoch,
-            'device': self.device,
-            'ckpt_path': self.ckpt_path,
-            'ckpt_interval': self.ckpt_interval
-        })
+    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, no_validation: bool=False, wandb_log: bool=True) -> None: 
+        if wandb_log: 
+            wandb.init(project='Classification Experiment', name=self.exp_name, config={
+                'dataset': self.dataset_name,
+                'model': self.model.__class__.__name__,
+                'batch_size': batch_size,
+                'n_epoch': n_epoch,
+                'lr': lr,
+                'weight_decay': weight_decay,
+                'start_epoch': start_epoch,
+                'device': self.device,
+                'ckpt_path': self.ckpt_path,
+                'ckpt_interval': self.ckpt_interval
+            })
 
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -58,7 +59,7 @@ class Trainer:
         self.model.train()
 
         for epoch in range(start_epoch, n_epoch + 1):
-            train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=True)
+            train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
 
             log_info = {
                 'epoch': epoch, 
@@ -66,14 +67,16 @@ class Trainer:
                 'train_acc': train_acc
             }
 
-            val_acc, val_loss = self.validate(batch_size) # run validation only on CIFAR-10/100
-            log_info.update({
-                'val_loss': val_loss, 
-                'val_acc': val_acc
-            })
+            if not no_validation: 
+                val_acc, val_loss = self.validate(batch_size) # run validation only on CIFAR-10/100
+                log_info.update({
+                    'val_loss': val_loss, 
+                    'val_acc': val_acc
+                })
 
             print(' | '.join([f'{k.title()}: {v}' for k, v in log_info.items()]))
-            wandb.log(log_info)
+            if wandb_log: 
+                wandb.log(log_info)
 
             if epoch % self.ckpt_interval == 0:
                 ckpt_path = self._save_model(f'{self.exp_name}_{epoch}.pth')
@@ -136,21 +139,22 @@ class ActiveLearningTrainer(Trainer):
         # np.where(self.labeled_ones == 1)[0].tolist() returns the list of indices of labeled samples
         # np.count_nonzero(self.labeled_ones) returns the number of labeled samples
 
-    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, n_stages: int, budget_per_stage: int) -> None: 
-        wandb.init(project='Classification Experiment', name=self.exp_name, config={
-            'dataset': self.dataset_name,
-            'model': self.model.__class__.__name__,
-            'batch_size': batch_size,
-            'n_epoch': n_epoch,
-            'lr': lr,
-            'weight_decay': weight_decay,
-            'start_epoch': start_epoch,
-            'device': self.device,
-            'n_stages': n_stages,
-            'budget_per_stage': budget_per_stage,
-            'ckpt_path': self.ckpt_path,
-            'ckpt_interval': self.ckpt_interval
-        })
+    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, n_stages: int, budget_per_stage: int, no_validation: bool=False, wandb_log: bool=True) -> None: 
+        if wandb_log: 
+            wandb.init(project='Classification Experiment', name=self.exp_name, config={
+                'dataset': self.dataset_name,
+                'model': self.model.__class__.__name__,
+                'batch_size': batch_size,
+                'n_epoch': n_epoch,
+                'lr': lr,
+                'weight_decay': weight_decay,
+                'start_epoch': start_epoch,
+                'device': self.device,
+                'n_stages': n_stages,
+                'budget_per_stage': budget_per_stage,
+                'ckpt_path': self.ckpt_path,
+                'ckpt_interval': self.ckpt_interval
+            })
 
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -178,7 +182,7 @@ class ActiveLearningTrainer(Trainer):
             train_losses, train_acces = [], []
             val_losses, val_acces = [], []
             for epoch in range(start_epoch, n_epoch + 1):
-                train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=True)
+                train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
 
                 log_info = {
                     f'stage{stage}/epoch': epoch, 
@@ -186,14 +190,16 @@ class ActiveLearningTrainer(Trainer):
                     f'stage{stage}/train_acc': train_acc
                 }
 
-                val_acc, val_loss = self.validate(batch_size) # run validation only on CIFAR-10/100
-                log_info.update({
-                    f'stage{stage}/val_loss': val_loss, 
-                    f'stage{stage}/val_acc': val_acc
-                })
+                if not no_validation:
+                    val_acc, val_loss = self.validate(batch_size) # run validation only on CIFAR-10/100
+                    log_info.update({
+                        f'stage{stage}/val_loss': val_loss, 
+                        f'stage{stage}/val_acc': val_acc
+                    })
 
                 print(' | '.join([f'{k.title()}: {v}' for k, v in log_info.items()]))
-                wandb.log(log_info)
+                if wandb_log:
+                    wandb.log(log_info)
 
                 train_losses.append(train_loss)
                 train_acces.append(train_acc)
@@ -204,13 +210,14 @@ class ActiveLearningTrainer(Trainer):
                     ckpt_path = self._save_model(f'{self.exp_name}_{epoch}.pth')
                     print(f'Checkpoint saved: {ckpt_path}')
 
-            wandb.log({
-                'stage': stage,
-                f'train_loss_avg': sum(train_losses) / len(train_losses),
-                f'train_acc_avg': sum(train_acces) / len(train_acces),
-                f'val_loss_avg': sum(val_losses) / len(val_losses),
-                f'val_acc_avg': sum(val_acces) / len(val_acces)
-            })
+            if wandb_log: 
+                wandb.log({
+                    'stage': stage,
+                    f'train_loss_avg': sum(train_losses) / len(train_losses),
+                    f'train_acc_avg': sum(train_acces) / len(train_acces),
+                    f'val_loss_avg': sum(val_losses) / len(val_losses),
+                    f'val_acc_avg': sum(val_acces) / len(val_acces)
+                })
     
     def _update_acquisition(self) -> list[int]: 
         acquisition_value_arr = np.array(self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name)), dtype=float)
@@ -252,9 +259,9 @@ def main(args: argparse.Namespace):
         print(f'Accuracy: {acc}')
     else: 
         if args.al: 
-            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch, args.al_stage, args.budget_per_stage)
+            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch, args.al_stage, args.budget_per_stage, args.no_validation, not args.no_wandb)
         else: 
-            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch)
+            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch, args.no_validation, not args.no_wandb)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -272,8 +279,10 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='L2 regularization coefficient')
+    parser.add_argument('--no-validation', action='store_true', help='whether to skip validation during training')
+    parser.add_argument('--no-wandb', action='store_true', help='whether to not logging to wandb')
 
-    parser.add_argument('--validate', action='store_true', help='whether to validate the model (pretrained model required)')
+    parser.add_argument('--validate', action='store_true', help='whether to only validate the model (pretrained model required)')
     
     parser.add_argument('--al', action='store_true', help='whether to adopt active learning framework')
     parser.add_argument('--acquisition_function', type=str, help='acquisition function for selecting samples to label', default='class_balance_sampling')
