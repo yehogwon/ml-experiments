@@ -135,7 +135,7 @@ class ActiveLearningTrainer(Trainer):
                 raise ValueError(f'Invalid acquisition function: {acquisition_function}')
         # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, device: str, **kwargs) -> list[tuple[int, float]]
 
-        self.acquisition_values = [0] * len(self.train_dataset) # list of tuples (index, acquisition value) <- acquisition values of labeled samples are set to 0
+        self.acquisition_values = [(0, 0.0)] * len(self.train_dataset) # list of tuples (index, acquisition value) <- acquisition values of labeled samples are set to 0
         self.labeled_ones = np.zeros(len(self.train_dataset), dtype=int) # 0: unlabeled, 1: labeled e.g., self.labeled_ones[i] = 1 iff i-th sample is labeled
         # np.where(self.labeled_ones == 1)[0].tolist() returns the list of indices of labeled samples
         # np.count_nonzero(self.labeled_ones) returns the number of labeled samples
@@ -171,13 +171,25 @@ class ActiveLearningTrainer(Trainer):
                 assert self._remaining_samples() >= budget_per_stage, f'Not enough samples to label: {self._remaining_samples()} < {budget_per_stage}'
                 newly_labeled_indices = np.random.choice(np.where(self.labeled_ones == 0)[0], size=budget_per_stage, replace=False)
             else: 
+                if self._fully_labeled():
+                    newly_labeled_indices = []
                 if self._remaining_samples() < budget_per_stage: 
                     newly_labeled_indices = np.where(self.labeled_ones == 0)[0]
                 else: 
                     newly_labeled_indices = self._update_acquisition()[:budget_per_stage]
             # For the reference of SubsetRandomSampler, refer to here: https://pytorch.org/docs/stable/data.html#torch.utils.data.SubsetRandomSampler
 
-            # TODO: Log newly labeled images in this stage and their acquisition values to wandb
+            # TODO: image resize for ImageNet
+            print(f'Stage {stage} - newly labeled images: {newly_labeled_indices}')
+            if wandb_log:
+                # image_logs = [wandb.Image(self.train_dataset[index][0], caption=str(self.acquisition_values[index][1])) for index in newly_labeled_indices[:50]] <- poor readability
+                image_logs = []
+                for index in newly_labeled_indices[:50]:
+                    image = self.train_dataset[index][0]
+                    caption = str(self.acquisition_values[index][1])
+                    image_logs.append(wandb.Image(image, caption=caption))
+                wandb.log({f'stage{stage}/newly_labeled_images': image_logs})
+
             newly_labeled_indices_arr = np.array(newly_labeled_indices, dtype=int)
             self.labeled_ones[newly_labeled_indices_arr] = 1 # update labeled_ones
             labeled_indices = np.where(self.labeled_ones == 1)[0].tolist() # indices of labeled samples
