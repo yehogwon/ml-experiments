@@ -34,4 +34,4 @@ def class_balance_sampling(dataset: VisionDataset, model: nn.Module, total: int,
     counts = _class_count(dataset, model, total, device, batch_size)
     coeffs = _class_balance_coefficient(counts)
     weights = [coeffs[y] for _, y in dataset]
-    return list(enumerate(weights))
+    return list(enumerate(weights)) # FIXME: this returns nan weights
