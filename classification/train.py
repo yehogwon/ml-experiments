@@ -286,8 +286,8 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='L2 regularization coefficient')
-    parser.add_argument('--no-validation', action='store_true', help='whether to skip validation during training')
-    parser.add_argument('--no-wandb', action='store_true', help='whether to not logging to wandb')
+    parser.add_argument('--no_validation', action='store_true', help='whether to skip validation during training')
+    parser.add_argument('--no_wandb', action='store_true', help='whether to not logging to wandb')
 
     parser.add_argument('--validate', action='store_true', help='whether to only validate the model (pretrained model required)')
     
