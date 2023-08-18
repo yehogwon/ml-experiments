@@ -24,8 +24,8 @@ def _class_balance_coefficient(counts: torch.Tensor) -> torch.Tensor:
     total = counts.sum().item()
     return torch.exp(-counts / total)
 
-def class_balance_sampling(dataset: VisionDataset, model: nn.Module, total: int, batch_size: int=64) -> list[float]: 
+def class_balance_sampling(dataset: VisionDataset, model: nn.Module, total: int, batch_size: int=64) -> list[tuple[int, float]]: 
     counts = _class_count(dataset, model, total, batch_size)
     coeffs = _class_balance_coefficient(counts)
     weights = [coeffs[y] for _, y in dataset]
-    return weights
+    return list(enumerate(weights))

@@ -123,19 +123,55 @@ class ActiveLearningTrainer(Trainer):
                 self.acquisition_function = class_balance_sampling
             case _: 
                 raise ValueError(f'Invalid acquisition function: {acquisition_function}')
-        # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, **kwargs) -> list[float]
+        # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, **kwargs) -> list[tuple[int, float]]
 
-        self.acquisition_values = [0] * len(self.train_dataset)
+        self.acquisition_values = [0] * len(self.train_dataset) # list of tuples (index, acquisition value) <- acquisition values of labeled samples are set to 0
         self.labeled_ones = np.zeros(len(self.train_dataset), dtype=int) # 0: unlabeled, 1: labeled e.g., self.labeled_ones[i] = 1 iff i-th sample is labeled
         # np.where(self.labeled_ones == 1)[0].tolist() returns the list of indices of labeled samples
         # np.count_nonzero(self.labeled_ones) returns the number of labeled samples
 
     def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, n_stages: int, budget_per_stage: int) -> None: 
-        # TODO: implement training pipeline for active learning for image classification
-        pass
+        wandb.init(project='Classification Experiment', name=self.exp_name, config={
+            'dataset': self.dataset_name,
+            'model': self.model.__class__.__name__,
+            'batch_size': batch_size,
+            'n_epoch': n_epoch,
+            'lr': lr,
+            'weight_decay': weight_decay,
+            'start_epoch': start_epoch,
+            'device': self.device,
+            'n_stages': n_stages,
+            'budget_per_stage': budget_per_stage,
+            'ckpt_path': self.ckpt_path,
+            'ckpt_interval': self.ckpt_interval
+        })
+
+        for stage in range(1, n_stages + 1): 
+            # sampling: get indices to train on
+            # label_indices: np.ndarray <- indices to newly label
+            if stage == 1: 
+                label_indices = np.random.choice(np.where(self.labeled_ones == 0)[0], size=budget_per_stage, replace=False)
+            else: 
+                if self._remaining_samples() < budget_per_stage: 
+                    label_indices = np.where(self.labeled_ones == 0)[0]
+                else: 
+                    label_indices = self._update_acquisition()[:budget_per_stage]
     
-    def _update_acquisition(self) -> None: 
-        self.acquisition_values = self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name))
+    def _update_acquisition(self) -> list[int]: 
+        acquisition_value_arr = np.array(self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name)), dtype=float)
+        # masked_acquisition_values = (cal_acquisition_value * (1 - self.labeled_ones)).tolist()
+        acquisition_value_arr.T[1][np.where(self.labeled_ones == 1)[0]] = 0 # masked acquisition values (labeled -> 0)
+        sorted_masked_acquisition_arr = acquisition_value_arr[acquisition_value_arr[:, 1].argsort()[::-1]] # sort by acquisition values (descending order)
+        sorted_indices = sorted_masked_acquisition_arr[:, 0].astype(int).tolist()
+        sorted_values = sorted_masked_acquisition_arr[:, 1].tolist()
+        self.acquisition_values = list(zip(sorted_indices, sorted_values))
+        return sorted_indices
+    
+    def _fully_labeled(self) -> bool: 
+        return np.count_nonzero(self.labeled_ones) == len(self.train_dataset)
+    
+    def _remaining_samples(self) -> int: 
+        return len(self.train_dataset) - np.count_nonzero(self.labeled_ones)
 
 def main(args: argparse.Namespace): 
     model = Classifier(args.model, n_classes(args.dataset), pretrained=not args.scratch_backbone)
