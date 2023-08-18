@@ -213,7 +213,7 @@ class ActiveLearningTrainer(Trainer):
                     wandb.log(log_info)
 
                 if epoch % self.ckpt_interval == 0:
-                    ckpt_path = self._save_model(f'{self.exp_name}_{epoch}.pth')
+                    ckpt_path = self._save_model(f'{self.exp_name}_{stage}/{epoch}.pth')
                     print(f'Checkpoint saved: {ckpt_path}')
 
             if wandb_log: 
