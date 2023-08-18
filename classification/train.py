@@ -65,13 +65,12 @@ class Trainer:
                 'train_loss': train_loss, 
                 'train_acc': train_acc
             }
-            # TODO: ImageNet train split would be available soon
-            if self.dataset_name != 'imagenet': 
-                val_acc, val_loss = self.validate(batch_size) # run validation only on CIFAR-10/100
-                log_info.update({
-                    'val_loss': val_loss, 
-                    'val_acc': val_acc
-                })
+
+            val_acc, val_loss = self.validate(batch_size) # run validation only on CIFAR-10/100
+            log_info.update({
+                'val_loss': val_loss, 
+                'val_acc': val_acc
+            })
 
             print(' | '.join([f'{k.title()}: {v}' for k, v in log_info.items()]))
             wandb.log(log_info)
@@ -171,7 +170,47 @@ class ActiveLearningTrainer(Trainer):
                 else: 
                     label_indices = self._update_acquisition()[:budget_per_stage]
             # For the reference of SubsetRandomSampler, refer to here: https://pytorch.org/docs/stable/data.html#torch.utils.data.SubsetRandomSampler
-            train_dataloader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, sampler=torch.utils.data.SubsetRandomSampler(label_indices))
+            train_loader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, sampler=torch.utils.data.SubsetRandomSampler(label_indices))
+
+            self.model.to(self.device)
+            self.model.train()
+
+            train_losses, train_acces = [], []
+            val_losses, val_acces = [], []
+            for epoch in range(start_epoch, n_epoch + 1):
+                train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=True)
+
+                log_info = {
+                    f'stage{stage}/epoch': epoch, 
+                    f'stage{stage}/train_loss': train_loss, 
+                    f'stage{stage}/train_acc': train_acc
+                }
+
+                val_acc, val_loss = self.validate(batch_size) # run validation only on CIFAR-10/100
+                log_info.update({
+                    f'stage{stage}/val_loss': val_loss, 
+                    f'stage{stage}/val_acc': val_acc
+                })
+
+                print(' | '.join([f'{k.title()}: {v}' for k, v in log_info.items()]))
+                wandb.log(log_info)
+
+                train_losses.append(train_loss)
+                train_acces.append(train_acc)
+                val_losses.append(val_loss)
+                val_acces.append(val_acc)
+
+                if epoch % self.ckpt_interval == 0:
+                    ckpt_path = self._save_model(f'{self.exp_name}_{epoch}.pth')
+                    print(f'Checkpoint saved: {ckpt_path}')
+
+            wandb.log({
+                'stage': stage,
+                f'train_loss_avg': sum(train_losses) / len(train_losses),
+                f'train_acc_avg': sum(train_acces) / len(train_acces),
+                f'val_loss_avg': sum(val_losses) / len(val_losses),
+                f'val_acc_avg': sum(val_acces) / len(val_acces)
+            })
     
     def _update_acquisition(self) -> list[int]: 
         acquisition_value_arr = np.array(self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name)), dtype=float)
