@@ -270,6 +270,10 @@ class ActiveLearningTrainer(Trainer):
 
 def main(args: argparse.Namespace): 
     model = create_classifier(args.model, n_classes(args.dataset))
+    if args.parallel:
+        if not torch.cuda.is_available() or args.device != 'cuda':
+            raise ValueError('CUDA is not available')
+        model = nn.DataParallel(model)
 
     if args.pretrained_model:
         print(f'Load pretrained model: {args.pretrained_model}')
@@ -303,6 +307,7 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt_interval', type=int, default=10, help='interval for saving checkpoints')
     parser.add_argument('--model', type=str, required=True, help='model architecture (backbone)')
     parser.add_argument('--device', type=str, default='cpu', help='device on which the model will be trained/validated')
+    parser.add_argument('--parallel', action='store_true', help='whether to use DataParallel')
 
     # parser.add_argument('--scratch_backbone', action='store_true', help='whether to train the backbone from scratch')
     parser.add_argument('--pretrained_model', type=str, help='path to pretrained model')
