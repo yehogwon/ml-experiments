@@ -130,7 +130,7 @@ class ActiveLearningTrainer(Trainer):
 
         match acquisition_function:
             case 'class_balance_sampling':
-                self.acquisition_function = class_balance_sampling
+                self.acquisition_function = class_balance_acquisition
             case _: 
                 raise ValueError(f'Invalid acquisition function: {acquisition_function}')
         # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, device: str, **kwargs) -> list[tuple[int, float]]
