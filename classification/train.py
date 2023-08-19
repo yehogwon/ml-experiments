@@ -130,7 +130,7 @@ class ActiveLearningTrainer(Trainer):
         super().__init__(exp_name, dataset, transform, model, ckpt_path, ckpt_interval, device)
 
         match acquisition_function:
-            case 'class_balance_sampling':
+            case 'class_balance_acquisition':
                 self.acquisition_function = class_balance_acquisition
             case _: 
                 raise ValueError(f'Invalid acquisition function: {acquisition_function}')
@@ -316,7 +316,7 @@ if __name__ == '__main__':
     parser.add_argument('--validate', action='store_true', help='whether to only validate the model (pretrained model required)')
     
     parser.add_argument('--al', action='store_true', help='whether to adopt active learning framework')
-    parser.add_argument('--acquisition_function', type=str, help='acquisition function for selecting samples to label', default='class_balance_sampling')
+    parser.add_argument('--acquisition_function', type=str, help='acquisition function for selecting samples to label', default='class_balance_acquisition')
     parser.add_argument('--al_stage', type=int, help='number of stages for active learning')
     parser.add_argument('--budget_per_stage', type=int, help='total cost of labeling samples per stage')
 
