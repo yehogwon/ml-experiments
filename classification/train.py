@@ -58,7 +58,6 @@ class Trainer:
         train_loader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
         self.model.to(self.device)
-        self.model.train()
 
         for epoch in range(start_epoch, n_epoch + 1):
             train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
@@ -88,6 +87,7 @@ class Trainer:
         losses = []
         n_correct = 0
         
+        self.model.train()
         for x, y in tqdm(dataloader, desc=desc):
             x, y = x.to(self.device), y.to(self.device)
             optimizer.zero_grad()
@@ -108,6 +108,8 @@ class Trainer:
         loss_fn = nn.CrossEntropyLoss()
         n_correct = 0
         losses = []
+        
+        self.model.eval()
         for x, y in tqdm(test_loader, desc=f'Validation'):
             x, y = x.to(self.device), y.to(self.device)
             y_pred = self.model(x)
