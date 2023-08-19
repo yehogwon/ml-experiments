@@ -41,13 +41,22 @@ import torch.nn.init as init
 
 from torch.autograd import Variable
 
+import math
+
 __all__ = ['ResNet', 'resnet20', 'resnet32', 'resnet44', 'resnet56', 'resnet110']
 
 def _weights_init(m):
-    classname = m.__class__.__name__
-    #print(classname)
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
         init.kaiming_normal_(m.weight)
+
+def _bias_init(m): 
+    if hasattr(m, 'bias') and m.bias is not None:
+        if isinstance(m, nn.Linear): 
+            stdv = 1. / math.sqrt(m.weight.size(1))
+            m.bias.data.uniform_(-stdv, stdv)
+        elif isinstance(m, nn.Conv2d):
+            stdv = 1. / math.sqrt(m.weight.size(0))
+            m.bias.data.uniform_(-stdv, stdv)
 
 class LambdaLayer(nn.Module):
     def __init__(self, lambd):
@@ -100,8 +109,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
         self.linear = nn.Linear(64, num_classes)
 
-        self.init_weights()
-        self.init_bias()
+        self.init_parameters()
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -122,17 +130,9 @@ class ResNet(nn.Module):
         out = self.linear(out)
         return out
     
-    def init_weights(self): # initialize weights
+    def init_parameters(self): 
         self.apply(_weights_init)
-    
-    def init_bias(self): # initialize bias
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.constant_(m.bias, 0)
+        self.apply(_bias_init)
 
 def resnet20(n_classes: int):
     return ResNet(BasicBlock, [3, 3, 3], n_classes)
