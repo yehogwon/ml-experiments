@@ -38,7 +38,7 @@ class Trainer:
 
     def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, no_validation: bool=False, wandb_log: bool=True) -> None: 
         if wandb_log: 
-            wandb.init(project='Classification Experiment', name=self.exp_name, config={
+            wandb.init(project='Classification AL Experiment', name=self.exp_name, config={
                 'dataset': self.dataset_name,
                 'model': self.model.__class__.__name__,
                 'batch_size': batch_size,
