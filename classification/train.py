@@ -207,6 +207,7 @@ class ActiveLearningTrainer(Trainer):
                 train_acces.append(train_acc)
 
                 log_info = {
+                    'total_epoch': (stage - 1) * n_epoch + epoch,
                     f'stage{stage}/epoch': epoch, 
                     f'stage{stage}/train_loss': train_loss, 
                     f'stage{stage}/train_acc': train_acc
@@ -231,6 +232,7 @@ class ActiveLearningTrainer(Trainer):
 
             log_info = {
                 'stage': stage,
+                'cost': self._labeled_samples(),
                 f'train_loss_avg': sum(train_losses) / len(train_losses),
                 f'train_acc_avg': sum(train_acces) / len(train_acces)
             }
@@ -258,8 +260,11 @@ class ActiveLearningTrainer(Trainer):
     def _fully_labeled(self) -> bool: 
         return np.count_nonzero(self.labeled_ones) == len(self.train_dataset)
     
+    def _labeled_samples(self) -> int:
+        return np.count_nonzero(self.labeled_ones)
+    
     def _remaining_samples(self) -> int: 
-        return len(self.train_dataset) - np.count_nonzero(self.labeled_ones)
+        return len(self.train_dataset) - self._labeled_samples()
 
 def main(args: argparse.Namespace): 
     model = create_classifier(args.model, n_classes(args.dataset))
