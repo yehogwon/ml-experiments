@@ -18,7 +18,7 @@ def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: s
     for x, _ in tqdm(loader, desc='Computing the class balance in the dataset according to the model prediction'): 
         x = x.to(device)
         probs = F.softmax(model(x), dim=1)
-        # preds = torch.argmax(probs, dim=1) # FIRE: it does not work for MPS (AMD GPUs)
+        # preds = torch.argmax(probs, dim=1) # It does not work for MPS (AMD GPUs)
         # The above exception was issued officially by PyTorch: https://github.com/pytorch/pytorch/issues/92311 and https://github.com/pytorch/pytorch/issues/98191
         preds = torch.max(probs, dim=1).indices # This works pretty well even for MPS
         if pred_stack is None:
