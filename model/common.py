@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import torch
 import torch.nn as nn
 
-import resnet
+from model import resnet
 
 def create_classifier(name: str, n_classes: int, pretrained: bool=False) -> nn.Module: 
     match name: 
