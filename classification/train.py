@@ -17,8 +17,9 @@ from torchvision import transforms
 import wandb
 
 from dataset.common import n_classes, create_dataset
-from model import Classifier
+
 from acquisition import *
+from model.common import *
 
 from tqdm import tqdm
 
@@ -261,7 +262,7 @@ class ActiveLearningTrainer(Trainer):
         return len(self.train_dataset) - np.count_nonzero(self.labeled_ones)
 
 def main(args: argparse.Namespace): 
-    model = Classifier(args.model, n_classes(args.dataset), pretrained=not args.scratch_backbone)
+    model = create_classifier(args.model, n_classes(args.dataset))
 
     if args.pretrained_model:
         print(f'Load pretrained model: {args.pretrained_model}')
@@ -293,10 +294,10 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, required=True, help='dataset name to train/validate')
     parser.add_argument('--ckpt_path', type=str, required=True, help='path to save checkpoints (directory)')
     parser.add_argument('--ckpt_interval', type=int, default=10, help='interval for saving checkpoints')
-    parser.add_argument('--model', type=str, default='resnet34', help='model architecture (backbone)')
+    parser.add_argument('--model', type=str, required=True, help='model architecture (backbone)')
     parser.add_argument('--device', type=str, default='cpu', help='device on which the model will be trained/validated')
 
-    parser.add_argument('--scratch_backbone', action='store_true', help='whether to train the backbone from scratch')
+    # parser.add_argument('--scratch_backbone', action='store_true', help='whether to train the backbone from scratch')
     parser.add_argument('--pretrained_model', type=str, help='path to pretrained model')
     parser.add_argument('--start_epoch', type=int, default=1, help='start epoch for training')
     
