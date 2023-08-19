@@ -246,6 +246,9 @@ class ActiveLearningTrainer(Trainer):
             print(' | '.join([f'{k}: {v}' for k, v in log_info.items()]))
             if wandb_log: 
                 wandb.log(log_info)
+            
+            self.model.init_weights()
+            self.model.init_bias()
     
     def _update_acquisition(self) -> list[int]: 
         acquisition_value_arr = np.array(self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name), self.device), dtype=float)

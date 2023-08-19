@@ -100,7 +100,8 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
         self.linear = nn.Linear(64, num_classes)
 
-        self.apply(_weights_init)
+        self.init_weights()
+        self.init_bias()
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -120,6 +121,18 @@ class ResNet(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
+    
+    def init_weights(self): # initialize weights
+        self.apply(_weights_init)
+    
+    def init_bias(self): # initialize bias
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.constant_(m.bias, 0)
 
 def resnet20(n_classes: int):
     return ResNet(BasicBlock, [3, 3, 3], n_classes)
