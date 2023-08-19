@@ -17,21 +17,20 @@ def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: s
     pred_stack = None
     for x, _ in tqdm(loader, desc='Computing the class balance in the dataset according to the model prediction'): 
         x = x.to(device)
-        probs = model(x)
-        preds = F.softmax(probs, dim=1).argmax(dim=1)
+        probs = F.softmax(model(x), dim=1)
+        # preds = torch.argmax(probs, dim=1) # FIRE: it does not work for MPS (AMD GPUs)
+        # The above exception was issued officially by PyTorch: https://github.com/pytorch/pytorch/issues/92311 and https://github.com/pytorch/pytorch/issues/98191
+        preds = torch.max(probs, dim=1).indices # This works pretty well even for MPS
         if pred_stack is None:
             pred_stack = preds
         else:
             pred_stack = torch.cat((pred_stack, preds))
     return torch.Tensor([(pred_stack == i).sum().item() for i in range(total)])
 
-def _class_balance_coefficient(counts: torch.Tensor) -> torch.Tensor: 
-    total = counts.sum().item()
-    return torch.exp(-counts / total)
-
 # FIXME: make it more efficient
-def class_balance_sampling(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=64) -> list[tuple[int, float]]: 
-    counts = _class_count(dataset, model, total, device, batch_size)
-    coeffs = _class_balance_coefficient(counts)
-    weights = [coeffs[y] for _, y in dataset]
-    return list(enumerate(weights)) # FIXME: this returns nan weights
+def class_balance_sampling(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=128) -> list[tuple[int, float]]: 
+    counts = _class_count(dataset, model, total, device, batch_size) # (n_classes,)
+    class_balances = counts / counts.sum() # (n_classes,)
+    weights = [class_balances[y].item() for _, y in dataset] # this process can be done more efficiently
+    # TODO: merge two lines (weights -> weights_with_indices and use enumerate in list comprehension)
+    return list(enumerate(weights))
