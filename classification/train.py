@@ -141,7 +141,7 @@ class ActiveLearningTrainer(Trainer):
         # np.where(self.labeled_ones == 1)[0].tolist() returns the list of indices of labeled samples
         # np.count_nonzero(self.labeled_ones) returns the number of labeled samples
 
-    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, n_stages: int, budget_per_stage: int, no_validation: bool=False, wandb_log: bool=True) -> None: 
+    def train(self, batch_size: int, n_epoch: int, lr: float, weight_decay: float, start_epoch: int, n_stages: int, budget_per_stage: int, start_stage: int, no_validation: bool=False, wandb_log: bool=True) -> None: 
         if wandb_log: 
             wandb.init(project='Classification Experiment', name=self.exp_name, config={
                 'dataset': self.dataset_name,
@@ -165,7 +165,7 @@ class ActiveLearningTrainer(Trainer):
         self.model.to(self.device)
         self.model.train()
 
-        for stage in range(1, n_stages + 1): 
+        for stage in range(start_stage, n_stages + 1): 
             # sampling: get indices to train on
             # newly_label_indices: np.ndarray <- indices to newly label
             if stage == 1: 
@@ -290,7 +290,7 @@ def main(args: argparse.Namespace):
         print(f'Accuracy: {acc}')
     else: 
         if args.al: 
-            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch, args.al_stage, args.budget_per_stage, args.no_validation, not args.no_wandb)
+            trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch, args.al_stage, args.budget_per_stage, args.al_start_stage, args.no_validation, not args.no_wandb)
         else: 
             trainer.train(args.batch_size, args.epochs, args.lr, args.weight_decay, args.start_epoch, args.no_validation, not args.no_wandb)
 
@@ -318,6 +318,7 @@ if __name__ == '__main__':
     parser.add_argument('--al', action='store_true', help='whether to adopt active learning framework')
     parser.add_argument('--acquisition_function', type=str, help='acquisition function for selecting samples to label', default='class_balance_acquisition')
     parser.add_argument('--al_stage', type=int, help='number of stages for active learning')
+    parser.add_argument('--al_start_stage', type=int, default=1, help='start stage for active learning')
     parser.add_argument('--budget_per_stage', type=int, help='total cost of labeling samples per stage')
 
     parser.add_argument('--exp_name', type=str, required=True, help='Experiment name for wandb and ckpt')
