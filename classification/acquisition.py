@@ -41,7 +41,7 @@ def bvsb_uncertainty(dataset: VisionDataset, model: nn.Module, total: int, devic
         x = x.to(device)
         probs = F.softmax(model(x), dim=1)
         top_two = torch.topk(probs, k=2, dim=1).values
-        bvsb = top_two[:, 0] / top_two[:, 1]
+        bvsb = top_two[:, 1] / top_two[:, 0]
         if full_bvsb is None:
             full_bvsb = bvsb
         else:
