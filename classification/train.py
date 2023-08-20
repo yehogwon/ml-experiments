@@ -133,11 +133,16 @@ class ActiveLearningTrainer(Trainer):
 
         self.acquisition_functions: list = []
         for acquisition_function in acquisition_function_format.split(','):
-            match acquisition_function:
-                case 'class_balance_acquisition':
-                    self.acquisition_functions.append(class_balance_acquisition)
-                case _: 
-                    raise ValueError(f'Invalid acquisition function: {acquisition_function}')
+            # not supported by Python 3.9
+            # match acquisition_function:
+            #     case 'class_balance_acquisition':
+            #         self.acquisition_functions.append(class_balance_acquisition)
+            #     case _: 
+            #         raise ValueError(f'Invalid acquisition function: {acquisition_function}')
+            if acquisition_function == 'class_balance_acquisition':
+                self.acquisition_functions.append(class_balance_acquisition)
+            else:
+                raise ValueError(f'Invalid acquisition function: {acquisition_function}')
         # self.acquisition_functions: list of -- (dataset: VisionDataset, model: nn.Module, total: int, device: str, **kwargs) -> list[tuple[int, float]]
 
         self.acquisition_values = [(0, 0.0)] * len(self.train_dataset) # list of tuples (index, acquisition value) <- acquisition values of labeled samples are set to 0

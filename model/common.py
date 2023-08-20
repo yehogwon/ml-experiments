@@ -8,19 +8,10 @@ import torch.nn as nn
 from model import resnet
 
 def create_classifier(name: str, n_classes: int, pretrained: bool=False) -> nn.Module: 
-    match name: 
-        case 'resnet20': 
-            model_ = resnet.resnet20(n_classes)
-        case 'resnet32': 
-            model_ = resnet.resnet32(n_classes)
-        case 'resnet44': 
-            model_ = resnet.resnet44(n_classes)
-        case 'resnet56': 
-            model_ = resnet.resnet56(n_classes)
-        case 'resnet110': 
-            model_ = resnet.resnet110(n_classes)
-        case _:
-            raise ValueError(f'Unknown classifier: {name}')
+    if name in ['resnet20', 'resnet32', 'resnet44', 'resnet56', 'resnet110']:
+        model_ = getattr(resnet, name)(n_classes)
+    else: 
+        raise ValueError(f'Unknown classifier: {name}')
     if pretrained:
         raise NotImplementedError('Pretrained models are not supported yet')
     return model_
