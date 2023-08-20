@@ -28,7 +28,8 @@ def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: s
 def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> torch.Tensor[float]: 
     counts = _class_count(dataset, model, total, device, batch_size) # (n_classes,)
     class_balances = counts / counts.sum() # (n_classes,)
-    weights = class_balances[torch.Tensor([y for _, y in dataset]).long()]
+    neg_exp_class_balances = torch.exp(-class_balances) # (n_classes,)
+    weights = neg_exp_class_balances[torch.Tensor([y for _, y in dataset]).long()]
     # return weights.tolist()
     # return list(enumerate(weights.tolist()))
     return weights
