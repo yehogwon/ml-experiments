@@ -190,13 +190,13 @@ class ActiveLearningTrainer(Trainer):
             # For the reference of SubsetRandomSampler, refer to here: https://pytorch.org/docs/stable/data.html#torch.utils.data.SubsetRandomSampler
 
             # TODO: image resize for ImageNet
-            print(f'Stage {stage} - newly labeled images: {newly_labeled_indices}')
+            print(f'Stage {stage} - newly labeled image indices with acquisition values: {self.acquisition_values[:min(20, budget_per_stage)]}')
             if wandb_log:
                 # image_logs = [wandb.Image(self.train_dataset[index][0], caption=str(self.acquisition_values[index][1])) for index in newly_labeled_indices[:50]] <- poor readability
                 image_logs = []
                 for index in newly_labeled_indices[:50]:
                     image = self.train_dataset[index][0]
-                    caption = str(self.acquisition_values[index][1])
+                    caption = '{:.5f}'.format(self.acquisition_values[index][1])
                     image_logs.append(wandb.Image(image, caption=caption))
                 wandb.log({f'stage{stage}/newly_labeled_images': image_logs})
 
