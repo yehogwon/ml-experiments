@@ -141,6 +141,8 @@ class ActiveLearningTrainer(Trainer):
             #         raise ValueError(f'Invalid acquisition function: {acquisition_function}')
             if acquisition_function == 'class_balance_acquisition':
                 self.acquisition_functions.append(class_balance_acquisition)
+            elif acquisition_function == 'bvsb_uncertainty':
+                self.acquisition_functions.append(bvsb_uncertainty)
             else:
                 raise ValueError(f'Invalid acquisition function: {acquisition_function}')
         # self.acquisition_functions: list of -- (dataset: VisionDataset, model: nn.Module, total: int, device: str, **kwargs) -> list[tuple[int, float]]
@@ -340,7 +342,7 @@ if __name__ == '__main__':
     parser.add_argument('--validate', action='store_true', help='whether to only validate the model (pretrained model required)')
     
     parser.add_argument('--al', action='store_true', help='whether to adopt active learning framework')
-    parser.add_argument('--acquisition_functions', type=str, help='list of acquisition functions (separated by a comma) for selecting samples to label', default='class_balance_acquisition')
+    parser.add_argument('--acquisition_functions', type=str, help='list of acquisition functions (separated by a comma) for selecting samples to label: "class_balance_acquisition" and "bvsb_uncertainty" supported', default='class_balance_acquisition')
     parser.add_argument('--al_stage', type=int, help='number of stages for active learning')
     parser.add_argument('--al_start_stage', type=int, default=1, help='start stage for active learning')
     parser.add_argument('--budget_per_stage', type=int, help='total cost of labeling samples per stage')

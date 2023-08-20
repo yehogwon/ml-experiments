@@ -33,3 +33,17 @@ def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: i
     # return weights.tolist()
     # return list(enumerate(weights.tolist()))
     return weights
+
+def bvsb_uncertainty(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> torch.Tensor: 
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    full_bvsb = None
+    for x, _ in loader: 
+        x = x.to(device)
+        probs = F.softmax(model(x), dim=1)
+        top_two = torch.topk(probs, k=2, dim=1).values
+        bvsb = top_two[:, 0] / top_two[:, 1]
+        if full_bvsb is None:
+            full_bvsb = bvsb
+        else:
+            full_bvsb = torch.cat((full_bvsb, bvsb))
+    return full_bvsb
