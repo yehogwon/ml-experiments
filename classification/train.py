@@ -128,15 +128,17 @@ class Trainer:
         return ckpt_saved # return the path to saved checkpoint
 
 class ActiveLearningTrainer(Trainer):
-    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, acquisition_function: str, device: str='cpu') -> None:
+    def __init__(self, exp_name: str, dataset: str, transform, model: nn.Module, ckpt_path: str, ckpt_interval: int, acquisition_function_format: str, device: str='cpu') -> None:
         super().__init__(exp_name, dataset, transform, model, ckpt_path, ckpt_interval, device)
 
-        match acquisition_function:
-            case 'class_balance_acquisition':
-                self.acquisition_function = class_balance_acquisition
-            case _: 
-                raise ValueError(f'Invalid acquisition function: {acquisition_function}')
-        # self.acquisition_function: (dataset: VisionDataset, model: nn.Module, total: int, device: str, **kwargs) -> list[tuple[int, float]]
+        self.acquisition_functions: list = []
+        for acquisition_function in acquisition_function_format.split(','):
+            match acquisition_function:
+                case 'class_balance_acquisition':
+                    self.acquisition_functions.append(class_balance_acquisition)
+                case _: 
+                    raise ValueError(f'Invalid acquisition function: {acquisition_function}')
+        # self.acquisition_functions: list of -- (dataset: VisionDataset, model: nn.Module, total: int, device: str, **kwargs) -> list[tuple[int, float]]
 
         self.acquisition_values = [(0, 0.0)] * len(self.train_dataset) # list of tuples (index, acquisition value) <- acquisition values of labeled samples are set to 0
         self.labeled_ones = np.zeros(len(self.train_dataset), dtype=int) # 0: unlabeled, 1: labeled e.g., self.labeled_ones[i] = 1 iff i-th sample is labeled
@@ -289,7 +291,7 @@ def main(args: argparse.Namespace):
     ])
 
     if args.al:
-        trainer = ActiveLearningTrainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, args.acquisition_function, device=args.device)
+        trainer = ActiveLearningTrainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, args.acquisition_functions, device=args.device)
     else:
         trainer = Trainer(args.exp_name, args.dataset, transform, model, args.ckpt_path, args.ckpt_interval, device=args.device)
 
@@ -325,7 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('--validate', action='store_true', help='whether to only validate the model (pretrained model required)')
     
     parser.add_argument('--al', action='store_true', help='whether to adopt active learning framework')
-    parser.add_argument('--acquisition_function', type=str, help='acquisition function for selecting samples to label', default='class_balance_acquisition')
+    parser.add_argument('--acquisition_functions', type=str, help='list of acquisition functions (separated by a comma) for selecting samples to label', default='class_balance_acquisition')
     parser.add_argument('--al_stage', type=int, help='number of stages for active learning')
     parser.add_argument('--al_start_stage', type=int, default=1, help='start stage for active learning')
     parser.add_argument('--budget_per_stage', type=int, help='total cost of labeling samples per stage')
