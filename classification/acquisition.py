@@ -25,8 +25,10 @@ def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: s
             pred_stack = torch.cat((pred_stack, preds))
     return torch.Tensor([(pred_stack == i).sum().item() for i in range(total)])
 
-def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> list[tuple[int, float]]: 
+def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> torch.Tensor[float]: 
     counts = _class_count(dataset, model, total, device, batch_size) # (n_classes,)
     class_balances = counts / counts.sum() # (n_classes,)
-    weights = class_balances[torch.Tensor([y for _, y in dataset]).long()].tolist()
-    return list(enumerate(weights))
+    weights = class_balances[torch.Tensor([y for _, y in dataset]).long()]
+    # return weights.tolist()
+    # return list(enumerate(weights.tolist()))
+    return weights

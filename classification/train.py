@@ -181,7 +181,7 @@ class ActiveLearningTrainer(Trainer):
                 if self._remaining_samples() < budget_per_stage: 
                     newly_labeled_indices = np.where(self.labeled_ones == 0)[0]
                 else: 
-                    newly_labeled_indices = self._update_acquisition()[:budget_per_stage]
+                    newly_labeled_indices = self._update_acquisition(batch_size=batch_size)[:budget_per_stage]
             # For the reference of SubsetRandomSampler, refer to here: https://pytorch.org/docs/stable/data.html#torch.utils.data.SubsetRandomSampler
 
             # TODO: image resize for ImageNet
@@ -253,8 +253,16 @@ class ActiveLearningTrainer(Trainer):
             
             self.model.init_parameters() # re-initialize the model parameters
     
-    def _update_acquisition(self) -> list[int]: 
-        acquisition_value_arr = np.array(self.acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name), self.device), dtype=float)
+    def _update_acquisition(self, batch_size:int=32) -> list[int]: 
+        acquisition_values = None
+        for acquisition_function in self.acquisition_functions:
+            if acquisition_values is None: 
+                acquisition_values = acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name), self.device, batch_size=batch_size)
+            else:
+                acquisition_values *= acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name), self.device, batch_size=batch_size)
+
+        acquisition_values_list_with_indices = list(enumerate(acquisition_values.tolist()))
+        acquisition_value_arr = np.array(acquisition_values_list_with_indices, dtype=float)
         # masked_acquisition_values = (cal_acquisition_value * (1 - self.labeled_ones)).tolist()
         acquisition_value_arr.T[1][np.where(self.labeled_ones == 1)[0]] = 0 # masked acquisition values (labeled -> 0)
         sorted_masked_acquisition_arr = acquisition_value_arr[acquisition_value_arr[:, 1].argsort()[::-1]] # sort by acquisition values (descending order)
