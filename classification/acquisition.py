@@ -25,6 +25,8 @@ def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: s
             pred_stack = preds
         else:
             pred_stack = torch.cat((pred_stack, preds))
+            del preds
+        del x, probs
     return torch.Tensor([(pred_stack == i).sum().item() for i in range(total)])
 
 def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> torch.Tensor: 
@@ -32,6 +34,7 @@ def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: i
     class_balances = counts / counts.sum() # (n_classes,)
     neg_exp_class_balances = torch.exp(-class_balances) # (n_classes,)
     weights = neg_exp_class_balances[torch.Tensor([y for _, y in dataset]).long()]
+    del counts, class_balances, neg_exp_class_balances
     # return weights.tolist()
     # return list(enumerate(weights.tolist()))
     return weights
@@ -48,4 +51,6 @@ def bvsb_uncertainty(dataset: VisionDataset, model: nn.Module, total: int, devic
             full_bvsb = bvsb
         else:
             full_bvsb = torch.cat((full_bvsb, bvsb))
+            del bvsb
+        del x, probs, top_two
     return full_bvsb
