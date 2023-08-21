@@ -17,7 +17,7 @@ def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: s
     pred_stack = None
     for x, _ in tqdm(loader, desc='Class Count'): 
         x = x.to(device)
-        probs = F.softmax(model(x), dim=1).cpu()
+        probs = F.softmax(model(x), dim=1)
         # preds = torch.argmax(probs, dim=1) # It does not work for MPS (AMD GPUs)
         # The above exception was issued officially by PyTorch: https://github.com/pytorch/pytorch/issues/92311 and https://github.com/pytorch/pytorch/issues/98191
         preds = torch.max(probs, dim=1).indices # This works pretty well even for MPS
@@ -44,7 +44,7 @@ def bvsb_uncertainty(dataset: VisionDataset, model: nn.Module, total: int, devic
     full_bvsb = None
     for x, _ in tqdm(loader, desc='BvSB Uncertainty'): 
         x = x.to(device)
-        probs = F.softmax(model(x), dim=1).cpu()
+        probs = F.softmax(model(x), dim=1)
         top_two = torch.topk(probs, k=2, dim=1).values
         bvsb = top_two[:, 1] / top_two[:, 0]
         if full_bvsb is None:
