@@ -114,6 +114,8 @@ class Trainer:
 
             if wandb_log: 
                 wandb.log({'loss': loss.item()})
+            
+            del x, y, y_pred, loss
         
         return sum(losses) / len(losses), n_correct / len(self.train_dataset) # loss_avg, acc
     
@@ -131,6 +133,8 @@ class Trainer:
 
             loss = loss_fn(y_pred, y)
             losses.append(loss.item())
+
+            del x, y, y_pred, loss
 
         acc = n_correct / len(self.test_dataset)
         loss_avg = sum(losses) / len(losses)
@@ -284,6 +288,8 @@ class ActiveLearningTrainer(Trainer):
                 acquisition_values *= acquisition_function(self.train_dataset, self.model, n_classes(self.dataset_name), self.device, batch_size=batch_size)
 
         acquisition_values_list_with_indices = list(enumerate(acquisition_values.tolist()))
+        del acquisition_values
+        
         acquisition_value_arr = np.array(acquisition_values_list_with_indices, dtype=float)
         # masked_acquisition_values = (cal_acquisition_value * (1 - self.labeled_ones)).tolist()
         acquisition_value_arr.T[1][np.where(self.labeled_ones == 1)[0]] = 0 # masked acquisition values (labeled -> 0)
