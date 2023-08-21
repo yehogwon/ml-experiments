@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import VisionDataset
 from torchvision import transforms
 
-from torch.cuda.amp import GradScaler, autocast
+from torch.cuda.amp import GradScaler
 
 import wandb
 
@@ -98,9 +98,8 @@ class Trainer:
             optimizer.zero_grad()
 
             if scaler is not None:
-                with autocast(): 
-                    y_pred = self.model(x)
-                    loss = loss_fn(y_pred, y)
+                y_pred = self.model(x)
+                loss = loss_fn(y_pred, y)
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
