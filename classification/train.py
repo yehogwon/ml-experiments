@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import VisionDataset
 from torchvision import transforms
 
+from torch.cuda.amp import GradScaler, autocast
+
 import wandb
 
 from dataset.common import n_classes, create_dataset
@@ -59,9 +61,11 @@ class Trainer:
         train_loader = DataLoader(self.train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
         self.model.to(self.device)
+        if self.device == 'cuda':
+            scaler = GradScaler()
 
         for epoch in range(start_epoch, n_epoch + 1):
-            train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
+            train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, scaler=scaler, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
 
             log_info = {
                 'epoch': epoch, 
@@ -84,7 +88,7 @@ class Trainer:
                 ckpt_path = self._save_model(f'{self.exp_name}_{epoch}.pth')
                 print(f'Checkpoint saved: {ckpt_path}')
     
-    def _train_iteration(self, dataloader: DataLoader, loss_fn: nn.Module, optimizer: optim.Optimizer, desc: str='Training', wandb_log: bool=True) -> tuple[float, float]:
+    def _train_iteration(self, dataloader: DataLoader, loss_fn: nn.Module, optimizer: optim.Optimizer, scaler: GradScaler=None, desc: str='Training', wandb_log: bool=True) -> tuple[float, float]:
         losses = []
         n_correct = 0
         
@@ -92,13 +96,23 @@ class Trainer:
         for x, y in tqdm(dataloader, desc=desc):
             x, y = x.to(self.device), y.to(self.device)
             optimizer.zero_grad()
-            y_pred = self.model(x)
-            n_correct += (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
-            loss = loss_fn(y_pred, y)
-            loss.backward()
-            optimizer.step()
 
+            if scaler is not None:
+                with autocast(): 
+                    y_pred = self.model(x)
+                    loss = loss_fn(y_pred, y)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                y_pred = self.model(x)
+                loss = loss_fn(y_pred, y)
+                loss.backward()
+                optimizer.step()
+            
+            n_correct += (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
             losses.append(loss.item())
+
             if wandb_log: 
                 wandb.log({'loss': loss.item()})
         
@@ -175,7 +189,8 @@ class ActiveLearningTrainer(Trainer):
         optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
         self.model.to(self.device)
-        self.model.train()
+        if self.device == 'cuda':
+            scaler = GradScaler()
 
         for stage in range(start_stage, n_stages + 1): 
             # sampling: get indices to train on
@@ -214,7 +229,7 @@ class ActiveLearningTrainer(Trainer):
             train_losses, train_acces = [], []
             val_losses, val_acces = [], []
             for epoch in range(start_epoch, n_epoch + 1):
-                train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
+                train_loss, train_acc = self._train_iteration(train_loader, loss_fn, optimizer, scaler=scaler, desc=f'Epoch {epoch}/{n_epoch}', wandb_log=wandb_log)
                 train_losses.append(train_loss)
                 train_acces.append(train_acc)
 
