@@ -9,11 +9,13 @@ import torch.nn.functional as F
 from torchvision.datasets import VisionDataset
 from torch.utils.data import DataLoader
 
+from tqdm import tqdm
+
 def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=128) -> torch.Tensor: 
     # device: the device on which the model is located
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     pred_stack = None
-    for x, _ in loader: 
+    for x, _ in tqdm(loader, desc='Class Count'): 
         x = x.to(device)
         probs = F.softmax(model(x), dim=1)
         # preds = torch.argmax(probs, dim=1) # It does not work for MPS (AMD GPUs)
@@ -37,7 +39,7 @@ def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: i
 def bvsb_uncertainty(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> torch.Tensor: 
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     full_bvsb = None
-    for x, _ in loader: 
+    for x, _ in tqdm(loader, desc='BvSB Uncertainty'): 
         x = x.to(device)
         probs = F.softmax(model(x), dim=1)
         top_two = torch.topk(probs, k=2, dim=1).values
