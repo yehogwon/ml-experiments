@@ -20,6 +20,7 @@ from dataset.common import n_classes, create_dataset
 
 from acquisition import *
 from model.common import *
+import model.parallel as parallel
 
 from tqdm import tqdm
 
@@ -292,7 +293,8 @@ def main(args: argparse.Namespace):
     if args.parallel:
         if not torch.cuda.is_available() or args.device != 'cuda':
             raise ValueError('CUDA is not available')
-        model = nn.DataParallel(model)
+        # model = nn.DataParallel(model)
+        model = parallel.ParallelWrapper(model)
 
     if args.pretrained_model:
         print(f'Load pretrained model: {args.pretrained_model}')
