@@ -11,9 +11,21 @@ from torch.utils.data import DataLoader
 
 from tqdm import tqdm
 
+def _labels(dataset: VisionDataset, device: str, batch_size: int=32) -> torch.Tensor: 
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    labels = None
+    for _, y in tqdm(loader, desc='Extracting Labels'):
+        y = y.to(device)
+        if labels is None:
+            labels = y
+        else:
+            labels = torch.cat((labels, y))
+            del y
+    return labels
+
 def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=128) -> torch.Tensor: 
     # device: the device on which the model is located
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     pred_stack = None
     with torch.no_grad():
         for x, _ in tqdm(loader, desc='Class Count'): 
@@ -35,7 +47,7 @@ def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: i
     counts = _class_count(dataset, model, total, device, batch_size) # (n_classes,)
     class_balances = counts / counts.sum() # (n_classes,)
     neg_exp_class_balances = torch.exp(-class_balances) # (n_classes,)
-    weights = neg_exp_class_balances[torch.Tensor([y for _, y in dataset]).long()]
+    weights = neg_exp_class_balances[_labels(dataset, device, batch_size).long()]
     del counts, class_balances, neg_exp_class_balances
     # return weights.tolist()
     # return list(enumerate(weights.tolist()))
@@ -43,7 +55,7 @@ def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: i
 
 def bvsb_uncertainty(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> torch.Tensor: 
     model.eval()
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     full_bvsb = None
     with torch.no_grad():
         for x, _ in tqdm(loader, desc='BvSB Uncertainty'): 
