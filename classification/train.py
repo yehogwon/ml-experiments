@@ -256,6 +256,13 @@ class ActiveLearningTrainer(Trainer):
                 if wandb_log:
                     wandb.log(log_info)
 
+                # log GPU usage
+                if self.device == 'cuda':
+                    print(torch.cuda.mem_get_info())
+                    print(torch.cuda.memory_summary())
+                    print(torch.cuda.memory_stats())
+                    print(torch.cuda.memory_allocated())
+
                 if epoch % self.ckpt_interval == 0:
                     ckpt_path = self._save_model(f'{self.exp_name}-{stage}-{epoch}.pth')
                     print(f'Checkpoint saved: {ckpt_path}')
