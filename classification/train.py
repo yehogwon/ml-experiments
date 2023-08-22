@@ -126,15 +126,16 @@ class Trainer:
         losses = []
         
         self.model.eval()
-        for x, y in tqdm(test_loader, desc=f'Validation'):
-            x, y = x.to(self.device), y.to(self.device)
-            y_pred = self.model(x)
-            n_correct += (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
+        with torch.no_grad():
+            for x, y in tqdm(test_loader, desc=f'Validation'):
+                x, y = x.to(self.device), y.to(self.device)
+                y_pred = self.model(x)
+                n_correct += (F.softmax(y_pred, dim=1).argmax(dim=1) == y).sum().item()
 
-            loss = loss_fn(y_pred, y)
-            losses.append(loss.item())
+                loss = loss_fn(y_pred, y)
+                losses.append(loss.item())
 
-            del x, y, y_pred, loss
+                del x, y, y_pred, loss
 
         acc = n_correct / len(self.test_dataset)
         loss_avg = sum(losses) / len(losses)
@@ -255,13 +256,6 @@ class ActiveLearningTrainer(Trainer):
                 print(' | '.join([f'{k}: {v}' for k, v in log_info.items()]))
                 if wandb_log:
                     wandb.log(log_info)
-
-                # log GPU usage
-                if self.device == 'cuda':
-                    print(torch.cuda.mem_get_info())
-                    print(torch.cuda.memory_summary())
-                    print(torch.cuda.memory_stats())
-                    print(torch.cuda.memory_allocated())
 
                 if epoch % self.ckpt_interval == 0:
                     ckpt_path = self._save_model(f'{self.exp_name}-{stage}-{epoch}.pth')
