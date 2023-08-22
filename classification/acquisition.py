@@ -40,7 +40,7 @@ def _class_count(dataset: VisionDataset, model: nn.Module, total: int, device: s
                 pred_stack = torch.cat((pred_stack, preds))
                 del preds
             del x, probs
-    return torch.Tensor([(pred_stack == i).sum().item() for i in range(total)])
+    return torch.Tensor([(pred_stack == i).sum().item() for i in range(total)], device=device)
 
 def class_balance_acquisition(dataset: VisionDataset, model: nn.Module, total: int, device: str, batch_size: int=32) -> torch.Tensor: 
     model.eval()
