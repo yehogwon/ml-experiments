@@ -61,7 +61,7 @@ def bvsb_uncertainty(dataset: VisionDataset, model: nn.Module, total: int, devic
         for x, _ in tqdm(loader, desc='BvSB Uncertainty'): 
             x = x.to(device)
             probs = F.softmax(model(x), dim=1).detach()
-            top_two = torch.topk(probs, k=2, dim=1).values
+            top_two = torch.topk(probs, k=2, dim=1).values.to(device)
             bvsb = top_two[:, 1] / top_two[:, 0]
             if full_bvsb is None:
                 full_bvsb = bvsb
