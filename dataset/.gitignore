@@ -1,3 +1,7 @@
-cifar10/cifar-10-batches-py
-cifar100/cifar-100-python
+cifar10/*
+!cifar10/download.sh
+cifar100/*
+!cifar100/download.sh
 imagenet/*
+voc/*
+!voc/download.sh
